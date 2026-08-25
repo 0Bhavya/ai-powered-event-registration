@@ -15,10 +15,9 @@
   <header class="nav" role="banner">
     <div class="nav__inner container">
       <a href="/" class="nav__logo"><span>EventAI</span></a>
-      <nav class="nav__links">
+      <nav class="nav__links" id="desktopNavLinks">
         <a href="/events" class="nav__link">Events</a>
         <a href="/dashboard" class="nav__link nav__link--active">Dashboard</a>
-        <!-- Dynamically filled -->
       </nav>
       <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -118,6 +117,14 @@
       try {
         const user = await window.api.get('/auth/me');
         document.getElementById('userName').textContent = user.name;
+        
+        if (user.role === 'ADMIN') {
+          document.getElementById('desktopNavLinks').insertAdjacentHTML('beforeend', '<a href="/admin" class="nav__link" style="color: var(--accent-purple);">Admin Panel</a><a href="/staff" class="nav__link" style="color: var(--accent-green);">Scanner</a>');
+        } else if (user.role === 'STAFF') {
+          document.getElementById('desktopNavLinks').insertAdjacentHTML('beforeend', '<a href="/staff" class="nav__link" style="color: var(--accent-green);">Scanner</a>');
+        }
+        document.getElementById('desktopNavLinks').insertAdjacentHTML('beforeend', '<button class="nav__link nav__link--cta" onclick="window.api.clearAuth(); window.location.href=\'/\'">Logout</button>');
+        
         loadRegistrations();
         loadNotifications();
       } catch (err) {

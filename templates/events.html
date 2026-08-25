@@ -15,7 +15,7 @@
   <header class="nav" role="banner">
     <div class="nav__inner container">
       <a href="/" class="nav__logo"><span>EventAI</span></a>
-      <nav class="nav__links">
+      <nav class="nav__links" id="desktopNavLinks">
         <a href="/events" class="nav__link nav__link--active">Events</a>
         <a href="/login" class="nav__link">Login</a>
         <a href="/signup" class="nav__link nav__link--cta">Create Account</a>
@@ -232,7 +232,24 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', loadEvents);
+    document.addEventListener('DOMContentLoaded', async () => {
+      loadEvents();
+      if (window.api.token) {
+        try {
+          const user = await window.api.get('/auth/me');
+          const nav = document.getElementById('desktopNavLinks');
+          if (nav) {
+             nav.innerHTML = '<a href="/events" class="nav__link nav__link--active">Events</a><a href="/dashboard" class="nav__link">Dashboard</a>';
+             if (user.role === 'ADMIN') {
+               nav.innerHTML += '<a href="/admin" class="nav__link" style="color: var(--accent-purple);">Admin Panel</a><a href="/staff" class="nav__link" style="color: var(--accent-green);">Scanner</a>';
+             } else if (user.role === 'STAFF') {
+               nav.innerHTML += '<a href="/staff" class="nav__link" style="color: var(--accent-green);">Scanner</a>';
+             }
+             nav.innerHTML += '<button class="nav__link nav__link--cta" onclick="window.api.clearAuth(); window.location.href=\'/\'">Logout</button>';
+          }
+        } catch(e) {}
+      }
+    });
   </script>
 </body>
 </html>
