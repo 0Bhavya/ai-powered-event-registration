@@ -41,6 +41,26 @@
         <h1 class="section-title">Admin <span class="gradient-text">Control Panel</span></h1>
       </div>
 
+      <!-- Platform Statistics -->
+      <div class="glass fade-in-up" style="padding: 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-around; text-align: center;">
+        <div>
+          <h3 class="text-secondary" style="font-size: 0.9rem;">Total Registrations</h3>
+          <p id="statRegistrations" style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">--</p>
+        </div>
+        <div>
+          <h3 class="text-secondary" style="font-size: 0.9rem;">Total Events</h3>
+          <p id="statEvents" style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">--</p>
+        </div>
+        <div>
+          <h3 class="text-secondary" style="font-size: 0.9rem;">Attendance Rate</h3>
+          <p id="statAttendance" style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">--%</p>
+        </div>
+        <div>
+          <h3 class="text-secondary" style="font-size: 0.9rem;">Security/Satisfaction</h3>
+          <p id="statSecurity" style="font-size: 2rem; font-weight: 700; color: var(--accent-green);">--%</p>
+        </div>
+      </div>
+
       <div class="admin-grid">
         <div class="admin-panel glass fade-in-up">
           <h2>Fraud Logs</h2>
@@ -76,6 +96,25 @@
         </div>
       </div>
       
+      <div class="admin-panel glass fade-in-up delay-2" style="margin-top: 2rem;">
+        <h2>Admin Audit Logs</h2>
+        <table id="auditTable">
+          <thead>
+            <tr>
+              <th>Admin ID</th>
+              <th>Action</th>
+              <th>Target Type</th>
+              <th>Target ID</th>
+              <th>IP Address</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="6">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      
       <div style="margin-top: 2rem;">
         <button class="btn btn--primary btn--glow" onclick="createDemoEvent()">Create Demo Event</button>
       </div>
@@ -101,8 +140,10 @@
           return;
         }
         
+        loadStats();
         loadFraudLogs();
         loadAttendanceLogs();
+        loadAuditLogs();
       } catch (err) {
         // Redirection handled by api.js
       }
@@ -146,6 +187,41 @@
         `).join('');
       } catch (err) {
         tbody.innerHTML = '<tr><td colspan="3">Error loading records</td></tr>';
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const stats = await window.api.get('/stats');
+        document.getElementById('statRegistrations').textContent = stats.data.total_registrations;
+        document.getElementById('statEvents').textContent = stats.data.total_events;
+        document.getElementById('statAttendance').textContent = stats.data.attendance_rate + '%';
+        document.getElementById('statSecurity').textContent = stats.data.security_rate + '%';
+      } catch (err) {
+        console.error("Failed to load stats", err);
+      }
+    }
+
+    async function loadAuditLogs() {
+      const tbody = document.querySelector('#auditTable tbody');
+      try {
+        const logs = await window.api.get('/audit');
+        if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6">No audit records.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = logs.map(l => `
+            <tr>
+              <td>${l.admin_id}</td>
+              <td><span class="status-badge" style="background: rgba(99, 102, 241, 0.15); color: var(--accent-purple);">${l.action}</span></td>
+              <td>${l.target_type || '-'}</td>
+              <td>${l.target_id || '-'}</td>
+              <td>${l.ip_address || '-'}</td>
+              <td>${new Date(l.timestamp).toLocaleString()}</td>
+            </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6">Error loading audit logs</td></tr>';
       }
     }
 

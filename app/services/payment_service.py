@@ -15,8 +15,7 @@ class PaymentService:
         self.key_secret = settings.razorpay_key_secret
         
         if not self.demo_mode and (not self.key_id or not self.key_secret):
-            # Fallback to demo mode if credentials are missing
-            self.demo_mode = True
+            raise ValueError("Razorpay credentials are required when DEMO_PAYMENT_MODE is False")
             
         if not self.demo_mode:
             self.client = razorpay.Client(auth=(self.key_id, self.key_secret))

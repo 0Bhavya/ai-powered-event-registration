@@ -67,6 +67,7 @@
 
   <script src="/static/js/api.js"></script>
   <script src="/static/js/main.js"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>
     let currentRegistrationId = null;
 
@@ -153,17 +154,60 @@
         // 1. Create order
         const order = await window.api.post('/payments/create-order', { registration_id: currentRegistrationId });
         
-        // 2. Verify payment (Simulate success in demo mode)
-        const verifyData = {
-            razorpay_order_id: order.order_id,
-            razorpay_payment_id: "pay_demo_" + Math.random().toString(36).substring(7),
-            razorpay_signature: "demo_sig_valid"
-        };
-        const res = await window.api.post('/payments/verify', verifyData);
-        
-        window.EventAI.showToast('Payment successful! Ticket generated.', 'success');
-        closePaymentModal();
-        setTimeout(() => window.location.href = '/dashboard', 1500);
+        if (order.demo_mode) {
+          // 2. Verify payment (Simulate success in demo mode)
+          const verifyData = {
+              razorpay_order_id: order.order_id,
+              razorpay_payment_id: "pay_demo_" + Math.random().toString(36).substring(7),
+              razorpay_signature: "demo_sig_valid"
+          };
+          await window.api.post('/payments/verify', verifyData);
+          
+          window.EventAI.showToast('Payment successful! Ticket generated.', 'success');
+          closePaymentModal();
+          setTimeout(() => window.location.href = '/dashboard', 1500);
+        } else {
+          // 3. Open real Razorpay Checkout
+          const options = {
+            key: order.key_id,
+            amount: order.amount * 100, // Razorpay expects paise
+            currency: order.currency,
+            name: "EventAI Registration",
+            description: "Ticket Payment",
+            order_id: order.order_id,
+            handler: async function (response) {
+              try {
+                window.EventAI.showToast('Verifying payment...', 'info');
+                await window.api.post('/payments/verify', {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature
+                });
+                window.EventAI.showToast('Payment successful! Ticket generated.', 'success');
+                closePaymentModal();
+                setTimeout(() => window.location.href = '/dashboard', 1500);
+              } catch (verifyErr) {
+                window.EventAI.showToast(verifyErr.message || 'Verification failed', 'error');
+                btn.disabled = false;
+                btn.innerHTML = 'Confirm & Pay';
+              }
+            },
+            prefill: {
+              name: "Attendee",
+              email: "attendee@example.com"
+            },
+            theme: {
+              color: "#6366f1"
+            }
+          };
+          const rzp = new window.Razorpay(options);
+          rzp.on('payment.failed', function (response){
+            window.EventAI.showToast(response.error.description, 'error');
+            btn.disabled = false;
+            btn.innerHTML = 'Confirm & Pay';
+          });
+          rzp.open();
+        }
 
       } catch (err) {
         window.EventAI.showToast(err.message, 'error');

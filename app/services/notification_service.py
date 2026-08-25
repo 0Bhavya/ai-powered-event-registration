@@ -1,4 +1,6 @@
 import logging
+import smtplib
+from email.message import EmailMessage
 from typing import Optional
 from app.config import get_settings
 
@@ -16,7 +18,7 @@ class NotificationService:
     ) -> bool:
         """
         Sends an email containing the event ticket and QR code.
-        In demo mode, this just logs to the console to mock the email dispatch.
+        Falls back to demo mode (console logging) if credentials are not provided.
         """
         subject = f"Your Ticket for {event_title} is Confirmed!"
         body = f"""
@@ -27,15 +29,48 @@ class NotificationService:
         Ticket Code: {ticket_code}
         """
         
-        # In a real scenario, integrate smtplib or a provider API like SendGrid here.
-        # e.g., if not settings.demo_payment_mode: sendgrid.send(...)
+        # Check if we should use real SMTP
+        use_smtp = all([
+            not settings.demo_payment_mode,
+            settings.smtp_server,
+            settings.smtp_username,
+            settings.smtp_password
+        ])
         
-        logger.info(f"--- MOCK EMAIL DISPATCH ---")
-        logger.info(f"To: {recipient_email}")
-        logger.info(f"Subject: {subject}")
-        logger.info(f"Body: {body.strip()}")
-        if qr_file_path:
-            logger.info(f"Attachment: [QR Code from {qr_file_path}]")
-        logger.info(f"---------------------------")
-        
-        return True
+        if use_smtp:
+            try:
+                msg = EmailMessage()
+                msg.set_content(body.strip())
+                msg['Subject'] = subject
+                msg['From'] = settings.smtp_from_email
+                msg['To'] = recipient_email
+                
+                # Attach QR if exists
+                if qr_file_path:
+                    try:
+                        with open(qr_file_path, 'rb') as f:
+                            img_data = f.read()
+                        msg.add_attachment(img_data, maintype='image', subtype='png', filename='ticket_qr.png')
+                    except Exception as e:
+                        logger.warning(f"Could not attach QR code: {e}")
+                        
+                with smtplib.SMTP(settings.smtp_server, settings.smtp_port) as server:
+                    server.starttls()
+                    server.login(settings.smtp_username, settings.smtp_password)
+                    server.send_message(msg)
+                    
+                logger.info(f"Ticket email sent successfully to {recipient_email}")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to send email: {e}")
+                return False
+        else:
+            # Fallback to mock logging
+            logger.info(f"--- MOCK EMAIL DISPATCH ---")
+            logger.info(f"To: {recipient_email}")
+            logger.info(f"Subject: {subject}")
+            logger.info(f"Body: {body.strip()}")
+            if qr_file_path:
+                logger.info(f"Attachment: [QR Code from {qr_file_path}]")
+            logger.info(f"---------------------------")
+            return True
