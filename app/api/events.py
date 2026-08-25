@@ -7,6 +7,7 @@ from app.models.event import Event, EventStatus
 from app.models.user import User
 from app.schemas.event import EventCreate, EventUpdate, EventRead
 from app.auth.deps import get_current_admin
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -50,6 +51,16 @@ def create_event(
     db.add(event)
     db.commit()
     db.refresh(event)
+    
+    AuditService.log_audit(
+        db=db,
+        admin_id=current_admin.id,
+        action="CREATE_EVENT",
+        entity_type="Event",
+        entity_id=event.id,
+        metadata_info={"title": event.title}
+    )
+    
     return event
 
 @router.put("/{event_id}", response_model=EventRead)
@@ -78,6 +89,16 @@ def update_event(
     db.add(event)
     db.commit()
     db.refresh(event)
+    
+    AuditService.log_audit(
+        db=db,
+        admin_id=current_admin.id,
+        action="UPDATE_EVENT",
+        entity_type="Event",
+        entity_id=event.id,
+        metadata_info={"updated_fields": list(update_data.keys())}
+    )
+    
     return event
 
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -95,3 +116,13 @@ def delete_event(
     # We will delete it here.
     db.delete(event)
     db.commit()
+    
+    AuditService.log_audit(
+        db=db,
+        admin_id=current_admin.id,
+        action="DELETE_EVENT",
+        entity_type="Event",
+        entity_id=event_id,
+        metadata_info={"title": event.title}
+    )
+    return None

@@ -1,5 +1,5 @@
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -11,6 +11,7 @@ from app.models.ticket import Ticket, TicketStatus
 from app.schemas.payment import PaymentCreateOrder, PaymentOrderResponse, PaymentVerify, PaymentRead
 from app.services.payment_service import PaymentService
 from app.services.qr_service import QRService
+from app.services.notification_service import NotificationService
 from app.auth.deps import get_current_user
 from app.config import get_settings
 
@@ -78,6 +79,7 @@ def create_order(
 @router.post("/verify")
 def verify_payment(
     verify_data: PaymentVerify,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> Any:
@@ -135,6 +137,16 @@ def verify_payment(
     
     db.commit()
     db.refresh(ticket)
+    
+    # Dispatch email notification in background
+    background_tasks.add_task(
+        NotificationService.send_ticket_email,
+        recipient_email=current_user.email,
+        attendee_name=current_user.name,
+        event_title=registration.event.title,
+        ticket_code=ticket_code,
+        qr_file_path=qr_path
+    )
     
     return {"message": "Payment verified successfully", "registration_id": registration.id, "ticket_id": ticket.id}
 

@@ -11,6 +11,7 @@ from app.models.event import Event
 from app.models.user import User
 from app.schemas.attendance import AttendanceScan, AttendanceResponse, AttendanceRead
 from app.auth.deps import get_current_staff, get_current_admin
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -67,6 +68,15 @@ def scan_ticket(
     db.add(attendance)
     db.commit()
     db.refresh(attendance)
+    
+    AuditService.log_audit(
+        db=db,
+        admin_id=current_staff.id,
+        action="SCAN_TICKET",
+        entity_type="Attendance",
+        entity_id=attendance.id,
+        metadata_info={"ticket_id": ticket.id, "registration_id": registration.id}
+    )
     
     return AttendanceResponse(
         success=True,

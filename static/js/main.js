@@ -222,7 +222,81 @@ document.addEventListener('DOMContentLoaded', () => {
   initMobileNav();
   initWorkflowAnimation();
   loadStats();
+  initAuthForms();
+  updateNavForAuth();
 });
+
+/* ── Auth Logic ──────────────────────────────────────────────────────────────── */
+
+function initAuthForms() {
+  const loginForm = document.getElementById('loginForm');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(loginForm);
+      const data = new URLSearchParams(formData);
+      const btn = document.getElementById('loginBtn');
+      
+      try {
+        btn.disabled = true;
+        btn.innerHTML = '<span>Loading...</span>';
+        const res = await window.api.post('/auth/login', data, true);
+        window.api.token = res.access_token;
+        window.location.href = '/dashboard';
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Log In</span>';
+      }
+    });
+  }
+
+  const signupForm = document.getElementById('signupForm');
+  if (signupForm) {
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(signupForm);
+      const data = Object.fromEntries(formData.entries());
+      const btn = document.getElementById('signupBtn');
+      
+      try {
+        btn.disabled = true;
+        btn.innerHTML = '<span>Loading...</span>';
+        await window.api.post('/auth/register', data);
+        showToast('Account created! Please log in.', 'success');
+        setTimeout(() => window.location.href = '/login', 1500);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<span>Create Account</span>';
+      }
+    });
+  }
+}
+
+async function updateNavForAuth() {
+  if (window.api && window.api.token) {
+    try {
+      const user = await window.api.get('/auth/me');
+      const navLinks = document.querySelector('.nav__links');
+      const mobileNav = document.querySelector('.nav__mobile');
+      
+      const loggedInHtml = `
+        <a href="/events" class="nav__link">Events</a>
+        <a href="/dashboard" class="nav__link">Dashboard</a>
+        ${user.role === 'ADMIN' || user.role === 'STAFF' ? '<a href="/admin" class="nav__link">Admin</a>' : ''}
+        <button class="nav__link nav__link--cta" onclick="window.api.clearAuth(); window.location.href='/'">Logout</button>
+      `;
+      
+      if(navLinks) navLinks.innerHTML = loggedInHtml;
+      if(mobileNav) mobileNav.innerHTML = loggedInHtml;
+    } catch (e) {
+      // Token invalid
+      window.api.clearAuth();
+    }
+  }
+}
 
 // Export for other modules
 window.EventAI = { API, showToast, animateCounter };

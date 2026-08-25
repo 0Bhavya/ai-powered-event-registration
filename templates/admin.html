@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — {{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <link rel="stylesheet" href="/static/css/animations.css">
+  <style>
+    .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; }
+    .admin-panel { padding: 1.5rem; max-height: 500px; overflow-y: auto; }
+    .admin-panel h2 { font-size: 1.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+    th, td { padding: 0.75rem; border-bottom: 1px solid var(--border-subtle); }
+    th { color: var(--text-secondary); font-weight: 500; }
+    .status-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .status-blocked { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+    .status-flagged { background: rgba(249, 115, 22, 0.15); color: var(--accent-orange); }
+  </style>
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <header class="nav" role="banner">
+    <div class="nav__inner container">
+      <a href="/" class="nav__logo"><span>EventAI Admin</span></a>
+      <nav class="nav__links">
+        <a href="/events" class="nav__link">Events</a>
+        <a href="/dashboard" class="nav__link">Dashboard</a>
+        <a href="/admin" class="nav__link nav__link--active">Admin Control</a>
+        <button class="nav__link nav__link--cta" onclick="window.api.clearAuth(); window.location.href='/'">Logout</button>
+      </nav>
+    </div>
+  </header>
+  
+  <main class="page-content">
+    <div class="container">
+      <div class="section-header fade-in-up" style="text-align: left;">
+        <h1 class="section-title">Admin <span class="gradient-text">Control Panel</span></h1>
+      </div>
+
+      <div class="admin-grid">
+        <div class="admin-panel glass fade-in-up">
+          <h2>Fraud Logs</h2>
+          <table id="fraudTable">
+            <thead>
+              <tr>
+                <th>Registration</th>
+                <th>Risk Level</th>
+                <th>Score</th>
+                <th>Rules Triggered</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="4">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="admin-panel glass fade-in-up delay-1">
+          <h2>Attendance Logs</h2>
+          <table id="attendanceTable">
+            <thead>
+              <tr>
+                <th>Ticket ID</th>
+                <th>Status</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="3">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div style="margin-top: 2rem;">
+        <button class="btn btn--primary btn--glow" onclick="createDemoEvent()">Create Demo Event</button>
+      </div>
+    </div>
+  </main>
+  
+  <div id="toastContainer" class="toast-container" role="alert" aria-live="polite"></div>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!window.api.token) {
+        window.location.href = '/login';
+        return;
+      }
+      
+      try {
+        const user = await window.api.get('/auth/me');
+        if (user.role !== 'ADMIN' && user.role !== 'STAFF') {
+          window.EventAI.showToast('Access denied', 'error');
+          setTimeout(() => window.location.href = '/dashboard', 1500);
+          return;
+        }
+        
+        loadFraudLogs();
+        loadAttendanceLogs();
+      } catch (err) {
+        // Redirection handled by api.js
+      }
+    });
+
+    async function loadFraudLogs() {
+      const tbody = document.querySelector('#fraudTable tbody');
+      try {
+        const logs = await window.api.get('/fraud/admin/fraud-logs');
+        if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">No fraud logs found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = logs.map(l => `
+            <tr>
+              <td>${l.registration_id || 'N/A'}</td>
+              <td><span class="status-badge ${l.risk_level === 'HIGH' ? 'status-blocked' : 'status-flagged'}">${l.risk_level}</span></td>
+              <td>${l.risk_score.toFixed(2)}</td>
+              <td style="font-size: 0.8rem">${l.rules_triggered ? l.rules_triggered.join(', ') : 'ML Anomaly'}</td>
+            </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="4">Error loading logs</td></tr>';
+      }
+    }
+
+    async function loadAttendanceLogs() {
+      const tbody = document.querySelector('#attendanceTable tbody');
+      try {
+        const logs = await window.api.get('/attendance/admin/attendance');
+        if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3">No attendance records.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = logs.map(l => `
+            <tr>
+              <td>${l.ticket_id}</td>
+              <td>${l.status}</td>
+              <td>${new Date(l.checked_in_at).toLocaleTimeString()}</td>
+            </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="3">Error loading records</td></tr>';
+      }
+    }
+
+    async function createDemoEvent() {
+      try {
+        const suffix = Math.random().toString(36).substring(7);
+        const event = {
+          title: "Demo Event " + suffix,
+          slug: "demo-event-" + suffix,
+          venue: "Virtual",
+          event_date: "2026-12-01",
+          start_time: "10:00:00",
+          end_time: "12:00:00",
+          capacity: 100,
+          ticket_price: 1500.0,
+          description: "This is a dynamically created demo event."
+        };
+        await window.api.post('/events', event);
+        window.EventAI.showToast('Demo event created successfully!', 'success');
+      } catch (err) {
+        window.EventAI.showToast('Failed to create event: ' + err.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

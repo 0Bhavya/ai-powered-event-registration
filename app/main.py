@@ -125,6 +125,26 @@ async def signup_page(request: Request):
     )
 
 
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request):
+    """User dashboard."""
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {"app_name": settings.app_name},
+    )
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page(request: Request):
+    """Admin dashboard."""
+    return templates.TemplateResponse(
+        request,
+        "admin.html",
+        {"app_name": settings.app_name},
+    )
+
+
 @app.on_event("startup")
 async def on_startup():
     logger.info("Starting %s", settings.app_name)

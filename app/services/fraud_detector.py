@@ -1,8 +1,9 @@
 import re
 import numpy as np
 from datetime import datetime, timedelta, timezone
+import os
+import joblib
 from sqlalchemy.orm import Session
-from sklearn.ensemble import IsolationForest
 
 from app.models.registration import Registration, RiskLevel
 from app.models.fraud_log import FraudLog
@@ -14,6 +15,14 @@ DISPOSABLE_DOMAINS = {"tempmail.com", "10minutemail.com", "guerrillamail.com", "
 class FraudDetector:
     def __init__(self, db: Session):
         self.db = db
+        # Load the pre-trained model
+        model_path = os.path.join(os.path.dirname(__file__), '..', '..', 'models', 'fraud_model.joblib')
+        try:
+            self.clf = joblib.load(model_path)
+        except Exception as e:
+            # Fallback to None if not found, we can handle it in the ml method
+            self.clf = None
+            print(f"Warning: Could not load fraud_model.joblib: {e}")
         
     def _check_disposable_email(self, email: str) -> bool:
         domain = email.split('@')[-1].lower()
@@ -60,9 +69,10 @@ class FraudDetector:
         
     def _detect_anomalies_ml(self, user_id: int) -> bool:
         """Lightweight IsolationForest to detect abnormal registration frequency."""
+        if not self.clf:
+            return False # Model not available
+            
         # Get registration counts per day for the last 30 days for this user
-        # For a real implementation, we'd query daily counts.
-        # Here we mock a basic data extraction
         recent_cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         regs = self.db.query(Registration.created_at).filter(
             Registration.user_id == user_id,
@@ -79,14 +89,12 @@ class FraudDetector:
         if len(diffs) < 3:
             return False
             
-        # If they registered many times with very small time gaps
-        clf = IsolationForest(contamination=0.1, random_state=42)
-        preds = clf.fit_predict(diffs)
+        # We check the latest time diff
+        latest_diff = diffs[-1].reshape(1, -1)
+        pred = self.clf.predict(latest_diff)
         
-        # If the latest registration time diff is considered an anomaly (usually -1)
-        # We simplify by just checking if the average diff is extremely low
-        avg_diff = np.mean(diffs)
-        if avg_diff < 60: # less than 60 seconds average between regs
+        # IsolationForest returns -1 for outliers
+        if pred[0] == -1:
             return True
             
         return False
