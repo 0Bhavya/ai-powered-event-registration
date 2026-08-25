@@ -62,6 +62,38 @@
     </div>
   </div>
 
+  <!-- Feedback Modal -->
+  <div id="feedbackModal" class="modal" hidden>
+    <div class="modal__overlay" onclick="closeFeedbackModal()"></div>
+    <div class="modal__content glass" style="max-width: 500px;">
+      <h2>Submit Feedback</h2>
+      <p class="text-secondary" style="margin-bottom: 1.5rem;">Tell us what you thought about this event!</p>
+      
+      <input type="hidden" id="feedbackRegId">
+      
+      <div class="form-group">
+        <label class="form-label">Rating (1-5)</label>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+          <label><input type="radio" name="rating" value="1"> 1</label>
+          <label><input type="radio" name="rating" value="2"> 2</label>
+          <label><input type="radio" name="rating" value="3"> 3</label>
+          <label><input type="radio" name="rating" value="4"> 4</label>
+          <label><input type="radio" name="rating" value="5" checked> 5</label>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="feedbackComment" class="form-label">Review (Optional)</label>
+        <textarea id="feedbackComment" class="form-input" rows="4" placeholder="How was your experience?"></textarea>
+      </div>
+      
+      <div class="modal__actions" style="justify-content: flex-end; margin-top: 1.5rem;">
+        <button class="btn btn--ghost" onclick="closeFeedbackModal()">Cancel</button>
+        <button class="btn btn--primary" id="submitFeedbackBtn" onclick="sendFeedback()">Submit Review</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/js/api.js"></script>
   <script src="/static/js/main.js"></script>
   <script>
@@ -105,9 +137,10 @@
                   <h3 class="event-card__title">Event ID: ${reg.event_id}</h3>
                   <p class="event-card__desc">Registration Code: ${reg.registration_code}</p>
                   
-                  <div class="event-card__footer">
+                  <div class="event-card__footer" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     ${reg.status === 'CONFIRMED' 
-                      ? `<button class="btn btn--primary btn--full" onclick="viewTicket(${reg.id})">View Ticket</button>`
+                      ? `<button class="btn btn--primary" style="flex: 1;" onclick="viewTicket(${reg.id})">View Ticket</button>
+                         <button class="btn btn--ghost" style="flex: 1;" onclick="openFeedbackModal(${reg.id})">Feedback</button>`
                       : `<p class="text-secondary" style="font-size: 0.85rem;">Ticket unavailable</p>`
                     }
                   </div>
@@ -136,6 +169,42 @@
 
     function closeTicketModal() {
       document.getElementById('ticketModal').setAttribute('hidden', '');
+    }
+
+    function openFeedbackModal(regId) {
+      document.getElementById('feedbackRegId').value = regId;
+      document.getElementById('feedbackComment').value = '';
+      document.getElementById('feedbackModal').removeAttribute('hidden');
+    }
+
+    function closeFeedbackModal() {
+      document.getElementById('feedbackModal').setAttribute('hidden', '');
+    }
+
+    async function sendFeedback() {
+      const regId = document.getElementById('feedbackRegId').value;
+      const rating = document.querySelector('input[name="rating"]:checked').value;
+      const comment = document.getElementById('feedbackComment').value.trim();
+      const btn = document.getElementById('submitFeedbackBtn');
+      
+      try {
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+        
+        await window.api.post('/feedback', {
+          registration_id: parseInt(regId),
+          rating: parseInt(rating),
+          comment: comment
+        });
+        
+        window.EventAI.showToast('Thank you for your feedback! The AI analyzed your sentiment.', 'success');
+        closeFeedbackModal();
+      } catch (err) {
+        window.EventAI.showToast(err.message || 'Failed to submit feedback', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit Review';
+      }
     }
   </script>
 </body>

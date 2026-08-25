@@ -82,14 +82,18 @@
 
         container.innerHTML = events.map(evt => `
           <article class="event-card glass fade-in-up">
-            ${evt.banner_image ? `<img src="${evt.banner_image}" alt="${evt.title}" class="event-card__img">` : '<div class="event-card__img-placeholder"></div>'}
+            <a href="/event/${evt.slug}" style="text-decoration: none;">
+              ${evt.banner_image ? `<img src="${evt.banner_image}" alt="${evt.title}" class="event-card__img">` : '<div class="event-card__img-placeholder"></div>'}
+            </a>
             <div class="event-card__content">
               <div class="event-card__meta">
                 <span>${new Date(evt.event_date).toLocaleDateString()}</span>
                 <span>•</span>
                 <span>${evt.venue}</span>
               </div>
-              <h3 class="event-card__title">${evt.title}</h3>
+              <a href="/event/${evt.slug}" style="text-decoration: none; color: inherit;">
+                <h3 class="event-card__title">${evt.title}</h3>
+              </a>
               <p class="event-card__desc">${evt.description || 'No description provided.'}</p>
               
               <div class="event-card__footer">
@@ -101,6 +105,18 @@
             </div>
           </article>
         `).join('');
+        
+        // Check for ?register=ID param
+        const urlParams = new URLSearchParams(window.location.search);
+        const registerId = urlParams.get('register');
+        if (registerId) {
+          const evt = events.find(e => e.id == registerId);
+          if (evt) {
+            startRegistration(evt.id, evt.title, evt.ticket_price);
+            // clean url
+            window.history.replaceState({}, document.title, "/events");
+          }
+        }
       } catch (err) {
         container.innerHTML = '<div class="empty-state glass"><p>Failed to load events.</p></div>';
         window.EventAI.showToast(err.message, 'error');

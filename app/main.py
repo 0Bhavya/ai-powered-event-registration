@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -121,11 +121,38 @@ async def landing_page(request: Request):
 
 @app.get("/events", response_class=HTMLResponse)
 async def events_page(request: Request):
-    """Events listing — placeholder for Phase 4."""
+    """Events listing page."""
     return templates.TemplateResponse(
         request,
         "events.html",
         {"app_name": settings.app_name},
+    )
+
+@app.get("/event/{slug}", response_class=HTMLResponse)
+async def event_detail_page(request: Request, slug: str, db: Session = Depends(get_db)):
+    """SEO friendly event details page."""
+    event = db.query(Event).filter(Event.slug == slug).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    return templates.TemplateResponse(
+        request,
+        "event_detail.html",
+        {
+            "app_name": settings.app_name,
+            "event": {
+                "id": event.id,
+                "title": event.title,
+                "description": event.description or "Join us for an amazing experience.",
+                "status": event.status,
+                "event_date": event.event_date.strftime("%B %d, %Y") if event.event_date else "TBA",
+                "start_time": event.start_time.strftime("%I:%M %p") if event.start_time else "",
+                "venue": event.venue,
+                "ticket_price": float(event.ticket_price),
+                "available_seats": event.available_seats,
+                "capacity": event.capacity
+            }
+        }
     )
 
 
@@ -165,6 +192,15 @@ async def admin_page(request: Request):
     return templates.TemplateResponse(
         request,
         "admin.html",
+        {"app_name": settings.app_name},
+    )
+
+@app.get("/admin/events", response_class=HTMLResponse)
+async def admin_events_page(request: Request):
+    """Admin events management."""
+    return templates.TemplateResponse(
+        request,
+        "admin_events.html",
         {"app_name": settings.app_name},
     )
 

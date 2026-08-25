@@ -27,9 +27,8 @@
     <div class="nav__inner container">
       <a href="/" class="nav__logo"><span>EventAI Admin</span></a>
       <nav class="nav__links">
-        <a href="/events" class="nav__link">Events</a>
-        <a href="/dashboard" class="nav__link">Dashboard</a>
-        <a href="/admin" class="nav__link nav__link--active">Admin Control</a>
+        <a href="/admin" class="nav__link nav__link--active">Dashboard</a>
+        <a href="/admin/events" class="nav__link">Events</a>
         <button class="nav__link nav__link--cta" onclick="window.api.clearAuth(); window.location.href='/'">Logout</button>
       </nav>
     </div>
@@ -214,10 +213,10 @@
             <tr>
               <td>${l.admin_id}</td>
               <td><span class="status-badge" style="background: rgba(99, 102, 241, 0.15); color: var(--accent-purple);">${l.action}</span></td>
-              <td>${l.target_type || '-'}</td>
-              <td>${l.target_id || '-'}</td>
-              <td>${l.ip_address || '-'}</td>
-              <td>${new Date(l.timestamp).toLocaleString()}</td>
+              <td>${l.entity_type || '-'}</td>
+              <td>${l.entity_id || '-'}</td>
+              <td>-</td>
+              <td>${new Date(l.created_at).toLocaleString()}</td>
             </tr>
         `).join('');
       } catch (err) {
