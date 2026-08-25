@@ -2,7 +2,10 @@ import logging
 import smtplib
 from email.message import EmailMessage
 from typing import Optional
+from sqlalchemy.orm import Session
 from app.config import get_settings
+from app.models.notification import Notification
+from app.database.session import SessionLocal
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -10,6 +13,8 @@ logger = logging.getLogger(__name__)
 class NotificationService:
     @staticmethod
     def send_ticket_email(
+        user_id: int,
+        registration_id: int,
         recipient_email: str,
         attendee_name: str,
         event_title: str,
@@ -60,10 +65,28 @@ class NotificationService:
                     server.send_message(msg)
                     
                 logger.info(f"Ticket email sent successfully to {recipient_email}")
-                return True
+                status_val = "SENT"
+                success = True
             except Exception as e:
                 logger.error(f"Failed to send email: {e}")
-                return False
+                status_val = "FAILED"
+                success = False
+                
+            db = SessionLocal()
+            try:
+                notif = Notification(
+                    user_id=user_id,
+                    registration_id=registration_id,
+                    type="TICKET_CONFIRMATION",
+                    recipient=recipient_email,
+                    status=status_val
+                )
+                db.add(notif)
+                db.commit()
+            finally:
+                db.close()
+                
+            return success
         else:
             # Fallback to mock logging
             logger.info(f"--- MOCK EMAIL DISPATCH ---")
@@ -73,4 +96,20 @@ class NotificationService:
             if qr_file_path:
                 logger.info(f"Attachment: [QR Code from {qr_file_path}]")
             logger.info(f"---------------------------")
+            
+            
+            db = SessionLocal()
+            try:
+                notif = Notification(
+                    user_id=user_id,
+                    registration_id=registration_id,
+                    type="TICKET_CONFIRMATION_MOCK",
+                    recipient=recipient_email,
+                    status="SENT"
+                )
+                db.add(notif)
+                db.commit()
+            finally:
+                db.close()
+                
             return True

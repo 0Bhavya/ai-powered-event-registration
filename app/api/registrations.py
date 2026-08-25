@@ -16,7 +16,7 @@ from app.schemas.registration import (
 )
 from app.schemas.fraud import FraudCheckRequest
 from app.services.fraud_detector import FraudDetector
-from app.auth.deps import get_current_user
+from app.auth.deps import get_current_user, get_current_admin
 
 router = APIRouter()
 
@@ -149,6 +149,15 @@ def get_my_registrations(
     registrations = db.query(Registration).filter(
         Registration.user_id == current_user.id
     ).all()
+    return registrations
+
+@router.get("/admin/all", response_model=List[RegistrationRead])
+def get_all_registrations(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)
+) -> Any:
+    """Admin only: Get all registrations globally."""
+    registrations = db.query(Registration).order_by(Registration.created_at.desc()).all()
     return registrations
 
 @router.get("/{registration_id}", response_model=RegistrationRead)

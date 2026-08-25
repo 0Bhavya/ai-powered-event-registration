@@ -25,6 +25,7 @@ from app.api.tickets import router as tickets_router
 from app.api.attendance import router as attendance_router
 from app.api.feedback import router as feedback_router
 from app.api.audit import router as audit_router
+from app.api.notifications import router as notifications_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +52,7 @@ app.include_router(tickets_router, prefix="/api/tickets", tags=["tickets"])
 app.include_router(attendance_router, prefix="/api/attendance", tags=["attendance"])
 app.include_router(feedback_router, prefix="/api/feedback", tags=["feedback"])
 app.include_router(audit_router, prefix="/api/audit", tags=["audit"])
+app.include_router(notifications_router, prefix="/api/notifications", tags=["notifications"])
 
 # Static files
 static_dir = settings.static_dir
@@ -201,6 +203,24 @@ async def admin_events_page(request: Request):
     return templates.TemplateResponse(
         request,
         "admin_events.html",
+        {"app_name": settings.app_name},
+    )
+
+@app.get("/admin/registrations", response_class=HTMLResponse)
+async def admin_registrations_page(request: Request):
+    """Admin registrations management."""
+    return templates.TemplateResponse(
+        request,
+        "admin_registrations.html",
+        {"app_name": settings.app_name},
+    )
+
+@app.get("/admin/feedback", response_class=HTMLResponse)
+async def admin_feedback_page(request: Request):
+    """Admin feedback management."""
+    return templates.TemplateResponse(
+        request,
+        "admin_feedback.html",
         {"app_name": settings.app_name},
     )
 

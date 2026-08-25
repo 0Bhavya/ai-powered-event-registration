@@ -141,6 +141,8 @@ def verify_payment(
     # Dispatch email notification in background
     background_tasks.add_task(
         NotificationService.send_ticket_email,
+        user_id=current_user.id,
+        registration_id=registration.id,
         recipient_email=current_user.email,
         attendee_name=current_user.name,
         event_title=registration.event.title,

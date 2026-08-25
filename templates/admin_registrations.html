@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Registrations — {{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <link rel="stylesheet" href="/static/css/animations.css">
+  <style>
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+    th, td { padding: 1rem; border-bottom: 1px solid var(--border-subtle); }
+    th { color: var(--text-secondary); font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <header class="nav" role="banner">
+    <div class="nav__inner container">
+      <a href="/" class="nav__logo"><span>EventAI Admin</span></a>
+      <nav class="nav__links">
+        <a href="/admin" class="nav__link">Dashboard</a>
+        <a href="/admin/events" class="nav__link">Events</a>
+        <a href="/admin/registrations" class="nav__link nav__link--active">Registrations</a>
+        <a href="/admin/feedback" class="nav__link">Feedback</a>
+        <button class="nav__link nav__link--cta" onclick="window.api.clearAuth(); window.location.href='/'">Logout</button>
+      </nav>
+    </div>
+  </header>
+  
+  <main class="page-content">
+    <div class="container">
+      <div class="section-header fade-in-up">
+        <h1 class="section-title">All <span class="gradient-text">Registrations</span></h1>
+      </div>
+
+      <div class="glass fade-in-up" style="padding: 1.5rem; margin-top: 2rem; overflow-x: auto;">
+        <table id="regsTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Code</th>
+              <th>User ID</th>
+              <th>Event ID</th>
+              <th>Status</th>
+              <th>Risk Level</th>
+              <th>Score</th>
+              <th>Created At</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="8" style="text-align: center;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  
+  <div id="toastContainer" class="toast-container" role="alert" aria-live="polite"></div>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!window.api.token) {
+        window.location.href = '/login';
+        return;
+      }
+      
+      try {
+        const user = await window.api.get('/auth/me');
+        if (user.role !== 'ADMIN') {
+          window.location.href = '/dashboard';
+          return;
+        }
+        loadRegistrations();
+      } catch (err) {
+      }
+    });
+
+    async function loadRegistrations() {
+      const tbody = document.querySelector('#regsTable tbody');
+      try {
+        const regs = await window.api.get('/registrations/admin/all');
+        if (regs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No registrations found.</td></tr>';
+          return;
+        }
+        
+        tbody.innerHTML = regs.map(r => `
+          <tr>
+            <td>${r.id}</td>
+            <td><strong style="font-family: monospace;">${r.registration_code}</strong></td>
+            <td>${r.user_id}</td>
+            <td>${r.event_id}</td>
+            <td><span class="badge ${r.status === 'BLOCKED' ? 'badge--demo' : ''}">${r.status}</span></td>
+            <td><span style="color: ${r.risk_level === 'HIGH' || r.risk_level === 'CRITICAL' ? 'var(--accent-red)' : 'var(--text-secondary)'};">${r.risk_level}</span></td>
+            <td>${r.risk_score !== null ? r.risk_score.toFixed(2) : '-'}</td>
+            <td>${new Date(r.created_at).toLocaleString()}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--accent-red);">Failed to load.</td></tr>';
+      }
+    }
+  </script>
+</body>
+</html>
