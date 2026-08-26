@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,14 +11,16 @@
   <link rel="stylesheet" href="/static/css/main.css">
   <link rel="stylesheet" href="/static/css/animations.css">
 </head>
+
 <body>
   <div class="bg-grid" aria-hidden="true"></div>
   <header class="nav" role="banner">
     <div class="nav__inner container">
       <a href="/" class="nav__logo"><span>EventAI</span></a>
-      <nav class="nav__links" id="desktopNavLinks">
+      <nav class="nav__links">
         <a href="/events" class="nav__link">Events</a>
         <a href="/dashboard" class="nav__link nav__link--active">Dashboard</a>
+        <!-- Dynamically filled -->
       </nav>
       <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -44,7 +47,7 @@
             </div>
           </div>
         </div>
-        
+
         <div>
           <h2 style="margin-bottom: 1rem;">Notifications</h2>
           <div id="notificationsContainer" style="display: flex; flex-direction: column; gap: 1rem;">
@@ -54,7 +57,7 @@
       </div>
     </div>
   </main>
-  
+
   <div id="toastContainer" class="toast-container" role="alert" aria-live="polite"></div>
 
   <!-- Ticket QR Modal -->
@@ -63,7 +66,8 @@
     <div class="modal__content glass" style="text-align: center;">
       <h2>Event Ticket</h2>
       <p id="ticketEventName" class="text-secondary" style="margin-bottom: 1rem;"></p>
-      <div style="background: white; padding: 1rem; display: inline-block; border-radius: var(--radius-sm); margin-bottom: 1.5rem;">
+      <div
+        style="background: white; padding: 1rem; display: inline-block; border-radius: var(--radius-sm); margin-bottom: 1.5rem;">
         <img id="ticketQR" src="" alt="QR Code" style="width: 200px; height: 200px;" />
       </div>
       <p>Ticket Code: <strong id="ticketCodeText" style="font-family: monospace;">...</strong></p>
@@ -79,9 +83,9 @@
     <div class="modal__content glass" style="max-width: 500px;">
       <h2>Submit Feedback</h2>
       <p class="text-secondary" style="margin-bottom: 1.5rem;">Tell us what you thought about this event!</p>
-      
+
       <input type="hidden" id="feedbackRegId">
-      
+
       <div class="form-group">
         <label class="form-label">Rating (1-5)</label>
         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
@@ -92,12 +96,12 @@
           <label><input type="radio" name="rating" value="5" checked> 5</label>
         </div>
       </div>
-      
+
       <div class="form-group">
         <label for="feedbackComment" class="form-label">Review (Optional)</label>
         <textarea id="feedbackComment" class="form-input" rows="4" placeholder="How was your experience?"></textarea>
       </div>
-      
+
       <div class="modal__actions" style="justify-content: flex-end; margin-top: 1.5rem;">
         <button class="btn btn--ghost" onclick="closeFeedbackModal()">Cancel</button>
         <button class="btn btn--primary" id="submitFeedbackBtn" onclick="sendFeedback()">Submit Review</button>
@@ -113,18 +117,10 @@
         window.location.href = '/login';
         return;
       }
-      
+
       try {
         const user = await window.api.get('/auth/me');
         document.getElementById('userName').textContent = user.name;
-        
-        if (user.role === 'ADMIN') {
-          document.getElementById('desktopNavLinks').insertAdjacentHTML('beforeend', '<a href="/admin" class="nav__link" style="color: var(--accent-purple);">Admin Panel</a><a href="/staff" class="nav__link" style="color: var(--accent-green);">Scanner</a>');
-        } else if (user.role === 'STAFF') {
-          document.getElementById('desktopNavLinks').insertAdjacentHTML('beforeend', '<a href="/staff" class="nav__link" style="color: var(--accent-green);">Scanner</a>');
-        }
-        document.getElementById('desktopNavLinks').insertAdjacentHTML('beforeend', '<button class="nav__link nav__link--cta" onclick="window.api.clearAuth(); window.location.href=\'/\'">Logout</button>');
-        
         loadRegistrations();
         loadNotifications();
       } catch (err) {
@@ -136,7 +132,7 @@
       const container = document.getElementById('dashboardContainer');
       try {
         const regs = await window.api.get('/registrations/my-registrations');
-        
+
         if (regs.length === 0) {
           container.innerHTML = `
             <div class="empty-state glass fade-in-up">
@@ -158,11 +154,11 @@
                   <p class="event-card__desc">Registration Code: ${reg.registration_code}</p>
                   
                   <div class="event-card__footer" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    ${reg.status === 'CONFIRMED' 
-                      ? `<button class="btn btn--primary" style="flex: 1;" onclick="viewTicket(${reg.id})">View Ticket</button>
+                    ${reg.status === 'CONFIRMED'
+            ? `<button class="btn btn--primary" style="flex: 1;" onclick="viewTicket(${reg.id})">View Ticket</button>
                          <button class="btn btn--ghost" style="flex: 1;" onclick="openFeedbackModal(${reg.id})">Feedback</button>`
-                      : `<p class="text-secondary" style="font-size: 0.85rem;">Ticket unavailable</p>`
-                    }
+            : `<p class="text-secondary" style="font-size: 0.85rem;">Ticket unavailable</p>`
+          }
                   </div>
                 </div>
               </article>
@@ -182,7 +178,7 @@
         document.getElementById('ticketCodeText').textContent = ticket.ticket_code;
         document.getElementById('ticketQR').src = '/api/tickets/' + ticket.id + '/qr';
         document.getElementById('ticketModal').removeAttribute('hidden');
-      } catch(err) {
+      } catch (err) {
         window.EventAI.showToast("Could not load ticket.", "error");
       }
     }
@@ -199,7 +195,7 @@
           container.innerHTML = '<div class="glass" style="padding: 1rem; text-align: center; color: var(--text-secondary);">No notifications yet.</div>';
           return;
         }
-        
+
         container.innerHTML = notifs.map(n => `
           <div class="glass" style="padding: 1rem; border-left: 4px solid var(--accent-purple);">
             <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem;">
@@ -211,7 +207,7 @@
             </div>
           </div>
         `).join('');
-      } catch(err) {
+      } catch (err) {
         container.innerHTML = '<div class="glass" style="padding: 1rem; text-align: center; color: var(--accent-red);">Failed to load.</div>';
       }
     }
@@ -231,17 +227,17 @@
       const rating = document.querySelector('input[name="rating"]:checked').value;
       const comment = document.getElementById('feedbackComment').value.trim();
       const btn = document.getElementById('submitFeedbackBtn');
-      
+
       try {
         btn.disabled = true;
         btn.textContent = 'Submitting...';
-        
+
         await window.api.post('/feedback', {
           registration_id: parseInt(regId),
           rating: parseInt(rating),
           comment: comment
         });
-        
+
         window.EventAI.showToast('Thank you for your feedback! The AI analyzed your sentiment.', 'success');
         closeFeedbackModal();
       } catch (err) {
@@ -253,4 +249,5 @@
     }
   </script>
 </body>
+
 </html>

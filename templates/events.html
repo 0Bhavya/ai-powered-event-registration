@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,12 +11,13 @@
   <link rel="stylesheet" href="/static/css/main.css">
   <link rel="stylesheet" href="/static/css/animations.css">
 </head>
+
 <body>
   <div class="bg-grid" aria-hidden="true"></div>
   <header class="nav" role="banner">
     <div class="nav__inner container">
       <a href="/" class="nav__logo"><span>EventAI</span></a>
-      <nav class="nav__links" id="desktopNavLinks">
+      <nav class="nav__links">
         <a href="/events" class="nav__link nav__link--active">Events</a>
         <a href="/login" class="nav__link">Login</a>
         <a href="/signup" class="nav__link nav__link--cta">Create Account</a>
@@ -36,7 +38,7 @@
         <h1 class="section-title">Upcoming <span class="gradient-text">Events</span></h1>
         <p class="section-subtitle">Secure your spot at the frontier of innovation.</p>
       </div>
-      
+
       <div id="eventsContainer" class="events-grid">
         <div class="empty-state glass" id="loadingState">
           <p>Loading events...</p>
@@ -44,7 +46,7 @@
       </div>
     </div>
   </main>
-  
+
   <div id="toastContainer" class="toast-container" role="alert" aria-live="polite"></div>
 
   <!-- Registration/Payment Modal -->
@@ -60,7 +62,8 @@
       <p class="modal__demo-note">Demo Mode: Payment will be simulated automatically.</p>
       <div class="modal__actions">
         <button class="btn btn--secondary" onclick="closePaymentModal()">Cancel</button>
-        <button class="btn btn--primary btn--glow" id="confirmPaymentBtn" onclick="processPayment()">Confirm & Pay</button>
+        <button class="btn btn--primary btn--glow" id="confirmPaymentBtn" onclick="processPayment()">Confirm &
+          Pay</button>
       </div>
     </div>
   </div>
@@ -105,7 +108,7 @@
             </div>
           </article>
         `).join('');
-        
+
         // Check for ?register=ID param
         const urlParams = new URLSearchParams(window.location.search);
         const registerId = urlParams.get('register');
@@ -133,22 +136,22 @@
       try {
         // 1. Check availability
         await window.api.post('/registrations/check', { event_id: eventId });
-        
+
         // 2. Create pending registration
         const reg = await window.api.post('/registrations', { event_id: eventId });
-        
+
         if (reg.status === 'BLOCKED') {
-           window.EventAI.showToast('Registration blocked due to high fraud risk.', 'error', 6000);
-           return;
+          window.EventAI.showToast('Registration blocked due to high fraud risk.', 'error', 6000);
+          return;
         }
 
         currentRegistrationId = reg.id;
-        
+
         // 3. Open Payment Modal
         document.getElementById('modalEventName').textContent = title;
         document.getElementById('modalEventPrice').textContent = price > 0 ? '₹' + price : 'Free';
         document.getElementById('paymentModal').removeAttribute('hidden');
-        
+
       } catch (err) {
         window.EventAI.showToast(err.message, 'error');
       }
@@ -162,23 +165,23 @@
     async function processPayment() {
       if (!currentRegistrationId) return;
       const btn = document.getElementById('confirmPaymentBtn');
-      
+
       try {
         btn.disabled = true;
         btn.innerHTML = 'Processing...';
 
         // 1. Create order
         const order = await window.api.post('/payments/create-order', { registration_id: currentRegistrationId });
-        
+
         if (order.demo_mode) {
           // 2. Verify payment (Simulate success in demo mode)
           const verifyData = {
-              razorpay_order_id: order.order_id,
-              razorpay_payment_id: "pay_demo_" + Math.random().toString(36).substring(7),
-              razorpay_signature: "demo_sig_valid"
+            razorpay_order_id: order.order_id,
+            razorpay_payment_id: "pay_demo_" + Math.random().toString(36).substring(7),
+            razorpay_signature: "demo_sig_valid"
           };
           await window.api.post('/payments/verify', verifyData);
-          
+
           window.EventAI.showToast('Payment successful! Ticket generated.', 'success');
           closePaymentModal();
           setTimeout(() => window.location.href = '/dashboard', 1500);
@@ -217,7 +220,7 @@
             }
           };
           const rzp = new window.Razorpay(options);
-          rzp.on('payment.failed', function (response){
+          rzp.on('payment.failed', function (response) {
             window.EventAI.showToast(response.error.description, 'error');
             btn.disabled = false;
             btn.innerHTML = 'Confirm & Pay';
@@ -232,24 +235,8 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      loadEvents();
-      if (window.api.token) {
-        try {
-          const user = await window.api.get('/auth/me');
-          const nav = document.getElementById('desktopNavLinks');
-          if (nav) {
-             nav.innerHTML = '<a href="/events" class="nav__link nav__link--active">Events</a><a href="/dashboard" class="nav__link">Dashboard</a>';
-             if (user.role === 'ADMIN') {
-               nav.innerHTML += '<a href="/admin" class="nav__link" style="color: var(--accent-purple);">Admin Panel</a><a href="/staff" class="nav__link" style="color: var(--accent-green);">Scanner</a>';
-             } else if (user.role === 'STAFF') {
-               nav.innerHTML += '<a href="/staff" class="nav__link" style="color: var(--accent-green);">Scanner</a>';
-             }
-             nav.innerHTML += '<button class="nav__link nav__link--cta" onclick="window.api.clearAuth(); window.location.href=\'/\'">Logout</button>';
-          }
-        } catch(e) {}
-      }
-    });
+    document.addEventListener('DOMContentLoaded', loadEvents);
   </script>
 </body>
+
 </html>
